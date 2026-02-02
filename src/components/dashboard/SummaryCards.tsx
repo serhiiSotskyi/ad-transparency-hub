@@ -7,7 +7,7 @@ interface SummaryCardsProps {
 }
 
 export function SummaryCards({ summary }: SummaryCardsProps) {
-  const weekDiff = summary.total_ads - summary.last_week;
+  const dayDiff = summary.total_ads - summary.last_week;
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -17,12 +17,12 @@ export function SummaryCards({ summary }: SummaryCardsProps) {
         icon={BarChart3}
         variant="default"
         trend={{
-          value: weekDiff,
-          label: "vs last week",
+          value: dayDiff,
+          label: "vs yesterday",
         }}
       />
       <SummaryCard
-        title="Last Week"
+        title="Yesterday"
         value={summary.last_week}
         icon={Layers}
         variant="default"
@@ -32,21 +32,21 @@ export function SummaryCards({ summary }: SummaryCardsProps) {
         value={summary.added_count}
         icon={Plus}
         variant="success"
-        subtitle="Added this week"
+        subtitle="Added today"
       />
       <SummaryCard
         title="Removed"
         value={summary.removed_count}
         icon={Minus}
         variant="danger"
-        subtitle="Removed this week"
+        subtitle="Removed today"
       />
       <SummaryCard
         title="Changed"
         value={summary.changed_count}
         icon={RefreshCw}
         variant="warning"
-        subtitle="Modified this week"
+        subtitle="Modified today"
       />
     </div>
   );
