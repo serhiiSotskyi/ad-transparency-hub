@@ -1,10 +1,10 @@
 import { AdCard } from "./AdCard";
-import type { Ad, ChangedAd } from "@/types/snapshot";
+import type { CreativeRecord } from "@/types/snapshot";
 import { FileX2 } from "lucide-react";
 
 interface AdsListProps {
-  ads: (Ad | ChangedAd)[];
-  type: "new" | "removed" | "changed";
+  ads: CreativeRecord[];
+  type: "active" | "added" | "removed" | "changed";
   emptyMessage: string;
 }
 

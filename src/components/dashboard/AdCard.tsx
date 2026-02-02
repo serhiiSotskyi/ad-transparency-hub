@@ -1,47 +1,47 @@
-import { ExternalLink, Image, Video, Globe } from "lucide-react";
+import { ExternalLink, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import type { Ad, ChangedAd } from "@/types/snapshot";
+import type { CreativeRecord } from "@/types/snapshot";
 
 interface AdCardProps {
-  ad: Ad | ChangedAd;
-  type: "new" | "removed" | "changed";
+  ad: CreativeRecord;
+  type: "active" | "added" | "removed" | "changed";
 }
 
-function getTransparencyUrl(advertiserId?: string, creativeId?: string): string | null {
+function getTransparencyUrl(
+  advertiserId?: string,
+  creativeId?: string
+): string | null {
   if (!advertiserId || !creativeId) return null;
   return `https://adstransparency.google.com/advertiser/${advertiserId}/creative/${creativeId}`;
 }
 
-function getRegions(ad: Ad): string[] {
-  return ad.regions || ad.region || [];
-}
-
-function getMediaCounts(ad: Ad): { images: number; videos: number } {
-  if (ad.media) {
-    return {
-      images: ad.media.images || 0,
-      videos: ad.media.videos || 0,
-    };
-  }
-  return {
-    images: ad.image_count || 0,
-    videos: ad.video_count || 0,
-  };
-}
-
-function isChangedAd(ad: Ad | ChangedAd): ad is ChangedAd {
-  return "changes" in ad || "diff" in ad;
-}
-
 export function AdCard({ ad, type }: AdCardProps) {
   const transparencyUrl = getTransparencyUrl(ad.advertiser_id, ad.creative_id);
-  const regions = getRegions(ad);
-  const media = getMediaCounts(ad);
-  const title = ad.title || "Untitled Ad";
+  const title = ad.title || "Untitled";
+  const images = Array.isArray(ad.media?.images) ? ad.media.images : [];
+  const videos = Array.isArray(ad.media?.videos) ? ad.media.videos : [];
+
+  const imageUrl = (() => {
+    const first = images[0];
+    if (typeof first === "string") {
+      return first;
+    }
+    if (first && typeof first === "object") {
+      const candidate = first as { url?: unknown; src?: unknown };
+      if (typeof candidate.url === "string") {
+        return candidate.url;
+      }
+      if (typeof candidate.src === "string") {
+        return candidate.src;
+      }
+    }
+    return null;
+  })();
 
   const typeStyles = {
-    new: "border-l-4 border-l-success",
+    active: "border-l-4 border-l-primary",
+    added: "border-l-4 border-l-success",
     removed: "border-l-4 border-l-destructive",
     changed: "border-l-4 border-l-warning",
   };
@@ -55,97 +55,79 @@ export function AdCard({ ad, type }: AdCardProps) {
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <h3 className="font-medium text-card-foreground truncate">{title}</h3>
-            {ad.creative_id && (
-              <p className="text-xs text-muted-foreground mt-0.5">
-                ID: {ad.creative_id}
-              </p>
-            )}
+            <p className="text-xs text-muted-foreground mt-0.5">
+              ID: {ad.creative_id || "Unknown"}
+            </p>
           </div>
         </div>
 
-        {/* Regions */}
-        {regions.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            <Globe className="h-4 w-4 text-muted-foreground shrink-0" />
-            {regions.slice(0, 5).map((region, i) => (
-              <Badge key={i} variant="secondary" className="text-xs">
-                {region}
-              </Badge>
-            ))}
-            {regions.length > 5 && (
-              <Badge variant="secondary" className="text-xs">
-                +{regions.length - 5} more
-              </Badge>
-            )}
+        {/* Region */}
+        <div className="flex flex-wrap gap-1.5">
+          <Globe className="h-4 w-4 text-muted-foreground shrink-0" />
+          <Badge variant="secondary" className="text-xs">
+            {ad.region}
+          </Badge>
+        </div>
+
+        {/* Format */}
+        <div className="text-sm text-muted-foreground">
+          Format: <span className="text-card-foreground">{ad.format}</span>
+        </div>
+
+        {/* Dates */}
+        <div className="text-sm text-muted-foreground">
+          First seen:{" "}
+          <span className="text-card-foreground">{ad.first_seen}</span>
+          {" • "}Last seen:{" "}
+          <span className="text-card-foreground">{ad.last_seen}</span>
+        </div>
+
+        {ad.status === "new" && ad.became_new_date && (
+          <div className="text-sm text-muted-foreground">
+            New since:{" "}
+            <span className="text-card-foreground">{ad.became_new_date}</span>
+          </div>
+        )}
+
+        {ad.status === "changed" && ad.changed_date && (
+          <div className="text-sm text-muted-foreground">
+            Changed on:{" "}
+            <span className="text-card-foreground">{ad.changed_date}</span>
+          </div>
+        )}
+
+        {ad.status === "removed" && ad.removed_date && (
+          <div className="text-sm text-muted-foreground">
+            Removed on:{" "}
+            <span className="text-card-foreground">{ad.removed_date}</span>
+          </div>
+        )}
+
+        {ad.status === "active" && ad.first_seen && (
+          <div className="text-sm text-muted-foreground">
+            Active since:{" "}
+            <span className="text-card-foreground">{ad.first_seen}</span>
+          </div>
+        )}
+
+        {/* Thumbnail */}
+        {imageUrl && (
+          <div className="overflow-hidden rounded-md border border-border">
+            <img
+              src={imageUrl}
+              alt={title}
+              className="h-32 w-full object-cover"
+              loading="lazy"
+            />
           </div>
         )}
 
         {/* Media counts */}
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          {media.images > 0 && (
-            <span className="flex items-center gap-1">
-              <Image className="h-4 w-4" />
-              {media.images} image{media.images !== 1 ? "s" : ""}
-            </span>
-          )}
-          {media.videos > 0 && (
-            <span className="flex items-center gap-1">
-              <Video className="h-4 w-4" />
-              {media.videos} video{media.videos !== 1 ? "s" : ""}
-            </span>
-          )}
-          {media.images === 0 && media.videos === 0 && (
-            <span className="text-muted-foreground/60">No media assets</span>
-          )}
+          <span>
+            {images.length} images • {videos.length} videos
+          </span>
         </div>
-
-        {/* Changed fields */}
-        {type === "changed" && isChangedAd(ad) && (
-          <div className="rounded-md bg-secondary/50 p-3 space-y-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Changes Detected
-            </p>
-            {ad.changes?.map((change, i) => (
-              <div key={i} className="text-sm">
-                <span className="font-medium text-card-foreground">
-                  {change.field}:
-                </span>{" "}
-                <span className="text-destructive line-through">
-                  {JSON.stringify(change.before)}
-                </span>{" "}
-                →{" "}
-                <span className="text-success">
-                  {JSON.stringify(change.after)}
-                </span>
-              </div>
-            ))}
-            {ad.diff &&
-              Object.entries(ad.diff).map(([field, { before, after }]) => (
-                <div key={field} className="text-sm">
-                  <span className="font-medium text-card-foreground">
-                    {field}:
-                  </span>{" "}
-                  <span className="text-destructive line-through">
-                    {JSON.stringify(before)}
-                  </span>{" "}
-                  →{" "}
-                  <span className="text-success">{JSON.stringify(after)}</span>
-                </div>
-              ))}
-          </div>
-        )}
-
-        {/* Final URL */}
-        {ad.final_url && (
-          <a
-            href={ad.final_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-primary hover:underline truncate"
-          >
-            {ad.final_url}
-          </a>
-        )}
 
         {/* Action button */}
         {transparencyUrl && (
@@ -153,10 +135,16 @@ export function AdCard({ ad, type }: AdCardProps) {
             variant="outline"
             size="sm"
             className="w-full mt-1"
-            onClick={() => window.open(transparencyUrl, "_blank")}
+            asChild
           >
-            <ExternalLink className="mr-2 h-4 w-4" />
-            View on Google Ads Transparency
+            <a
+              href={transparencyUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <ExternalLink className="mr-2 h-4 w-4" />
+              View on Google Ads Transparency
+            </a>
           </Button>
         )}
       </div>
