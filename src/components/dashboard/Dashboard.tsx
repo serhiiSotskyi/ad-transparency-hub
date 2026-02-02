@@ -121,6 +121,14 @@ export function Dashboard() {
                 : typeof ad.became_removed_date === "string"
                   ? ad.became_removed_date
                   : null,
+            became_removed_date:
+              typeof ad.became_removed_date === "string"
+                ? ad.became_removed_date
+                : null,
+            last_seen_global:
+              typeof ad.last_seen_global === "string"
+                ? ad.last_seen_global
+                : null,
           };
         };
 

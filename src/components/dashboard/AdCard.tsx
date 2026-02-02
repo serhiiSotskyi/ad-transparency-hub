@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { CreativeRecord } from "@/types/snapshot";
 
+const fmt = (d?: string | null) => (d ? d.split("T")[0] : "");
+
 interface AdCardProps {
   ad: CreativeRecord;
   type: "active" | "added" | "removed" | "changed";
@@ -74,39 +76,39 @@ export function AdCard({ ad, type }: AdCardProps) {
           Format: <span className="text-card-foreground">{ad.format}</span>
         </div>
 
-        {/* Dates */}
-        <div className="text-sm text-muted-foreground">
-          First seen:{" "}
-          <span className="text-card-foreground">{ad.first_seen}</span>
-          {" • "}Last seen:{" "}
-          <span className="text-card-foreground">{ad.last_seen}</span>
-        </div>
-
-        {ad.status === "new" && ad.became_new_date && (
+        {ad.became_new_date && (
           <div className="text-sm text-muted-foreground">
             New since:{" "}
-            <span className="text-card-foreground">{ad.became_new_date}</span>
+            <span className="text-card-foreground">
+              {fmt(ad.became_new_date)}
+            </span>
           </div>
         )}
 
-        {ad.status === "changed" && ad.changed_date && (
+        {ad.changed_date && (
           <div className="text-sm text-muted-foreground">
-            Changed on:{" "}
-            <span className="text-card-foreground">{ad.changed_date}</span>
+            Last modified:{" "}
+            <span className="text-card-foreground">
+              {fmt(ad.changed_date)}
+            </span>
           </div>
         )}
 
-        {ad.status === "removed" && ad.removed_date && (
+        {ad.became_removed_date && (
           <div className="text-sm text-muted-foreground">
             Removed on:{" "}
-            <span className="text-card-foreground">{ad.removed_date}</span>
+            <span className="text-card-foreground">
+              {fmt(ad.became_removed_date)}
+            </span>
           </div>
         )}
 
-        {ad.status === "active" && ad.first_seen && (
+        {ad.last_seen_global && (
           <div className="text-sm text-muted-foreground">
-            Active since:{" "}
-            <span className="text-card-foreground">{ad.first_seen}</span>
+            Last seen:{" "}
+            <span className="text-card-foreground">
+              {fmt(ad.last_seen_global)}
+            </span>
           </div>
         )}
 

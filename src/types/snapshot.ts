@@ -25,6 +25,8 @@ export interface CreativeRecord {
   became_new_date?: string | null;
   changed_date?: string | null;
   removed_date?: string | null;
+  became_removed_date?: string | null;
+  last_seen_global?: string | null;
 }
 
 export interface Snapshot {
