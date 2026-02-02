@@ -10,7 +10,7 @@ export function Header() {
           />
           <div className="flex flex-col">
             <h1 className="text-xl font-semibold text-foreground">
-              RADAR
+              Ad Monitor
             </h1>
             <span className="text-xs text-muted-foreground leading-none">
               by Summon Digital

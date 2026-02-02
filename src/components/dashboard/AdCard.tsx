@@ -56,7 +56,7 @@ export function AdCard({ ad, type }: AdCardProps) {
         {/* Header */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-card-foreground truncate">{title}</h3>
+            
             <p className="text-xs text-muted-foreground mt-0.5">
               ID: {ad.creative_id || "Unknown"}
             </p>
