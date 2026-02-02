@@ -25,19 +25,25 @@ export function AdCard({ ad, type }: AdCardProps) {
   const videos = Array.isArray(ad.media?.videos) ? ad.media.videos : [];
 
   const imageUrl = (() => {
+    const rawImages =
+      (ad as { images?: unknown }).images ?? (ad.media as { images?: unknown } | undefined)?.images;
+    if (rawImages && typeof rawImages === "object" && !Array.isArray(rawImages)) {
+      const candidate = rawImages as { image?: unknown; url?: unknown; src?: unknown };
+      if (typeof candidate.image === "string") return candidate.image;
+      if (typeof candidate.url === "string") return candidate.url;
+      if (typeof candidate.src === "string") return candidate.src;
+    }
+    if (Array.isArray(rawImages)) {
+      const first = rawImages[0];
+      if (typeof first === "string") return first;
+      if (first && typeof first === "object") {
+        const candidate = first as { url?: unknown; src?: unknown };
+        if (typeof candidate.url === "string") return candidate.url;
+        if (typeof candidate.src === "string") return candidate.src;
+      }
+    }
     const first = images[0];
-    if (typeof first === "string") {
-      return first;
-    }
-    if (first && typeof first === "object") {
-      const candidate = first as { url?: unknown; src?: unknown };
-      if (typeof candidate.url === "string") {
-        return candidate.url;
-      }
-      if (typeof candidate.src === "string") {
-        return candidate.src;
-      }
-    }
+    if (typeof first === "string") return first;
     return null;
   })();
 
@@ -114,11 +120,11 @@ export function AdCard({ ad, type }: AdCardProps) {
 
         {/* Thumbnail */}
         {imageUrl && (
-          <div className="overflow-hidden rounded-md border border-border">
+          <div className="w-full h-48 flex items-center justify-center overflow-hidden bg-gray-100 rounded-md">
             <img
               src={imageUrl}
               alt={title}
-              className="h-32 w-full object-cover"
+              className="max-h-full max-w-full object-contain"
               loading="lazy"
             />
           </div>
