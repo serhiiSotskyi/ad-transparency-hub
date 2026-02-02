@@ -26,9 +26,10 @@ export function Dashboard() {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch("/api/radar", { method: "GET" });
+        const API_URL = import.meta.env.VITE_RADAR_API_URL;
+        const response = await fetch(API_URL);
         if (!response.ok) {
-          throw new Error("Failed to fetch ads");
+          throw new Error(`Failed to fetch ads: ${response.status}`);
         }
         const data = (await response.json()) as Snapshot;
 
