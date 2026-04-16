@@ -194,7 +194,7 @@ export function Dashboard() {
     new: {
       list: added,
       type: "added" as const,
-      emptyMessage: "No new ads detected this week",
+      emptyMessage: "No new ads detected today",
     },
     active: {
       list: active,
@@ -204,12 +204,12 @@ export function Dashboard() {
     removed: {
       list: removed,
       type: "removed" as const,
-      emptyMessage: "No ads were removed this week",
+      emptyMessage: "No ads were removed today",
     },
     changed: {
       list: changed,
       type: "changed" as const,
-      emptyMessage: "No ads were modified this week",
+      emptyMessage: "No ads were modified today",
     },
   };
 
