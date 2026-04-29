@@ -20,6 +20,11 @@ type CreativeRecord = {
   };
   first_seen: string | null;
   last_seen: string | null;
+  status?: string | null;
+  became_new_date?: string | null;
+  changed_date?: string | null;
+  became_removed_date?: string | null;
+  last_seen_global?: string | null;
 };
 
 type SqlRow = Record<string, unknown>;
@@ -67,7 +72,12 @@ function mapRow(row: SqlRow): CreativeRecord {
     creative_id: creativeId,
     advertiser_id: advertiserId,
     url: `https://adstransparency.google.com/advertiser/${advertiserId}/creative/${creativeId}`,
-    title: typeof row.title === "string" ? row.title : null,
+    title:
+      typeof row.title === "string"
+        ? row.title
+        : typeof row.advertiser_name === "string"
+          ? row.advertiser_name
+          : null,
     snippet: typeof row.snippet === "string" ? row.snippet : null,
     region: parseRegion(row) ?? "N/A",
     format: typeof row.media_format === "string" ? row.media_format : null,
@@ -87,6 +97,17 @@ function mapRow(row: SqlRow): CreativeRecord {
         : typeof row.last_seen === "string"
           ? row.last_seen
           : null,
+    status: typeof row.status === "string" ? row.status : null,
+    became_new_date:
+      typeof row.became_new_date === "string" ? row.became_new_date : null,
+    changed_date:
+      typeof row.changed_date === "string" ? row.changed_date : null,
+    became_removed_date:
+      typeof row.became_removed_date === "string"
+        ? row.became_removed_date
+        : null,
+    last_seen_global:
+      typeof row.last_seen_global === "string" ? row.last_seen_global : null,
   };
 }
 
@@ -94,6 +115,36 @@ async function runQuery(query: string): Promise<SqlRow[]> {
   const { data, error } = await supabase.rpc("sql", { query });
   if (error) throw error;
   return (data as SqlRow[]) || [];
+}
+
+function statusQuery(status: "new" | "removed" | "changed" | "active") {
+  return `
+    WITH latest_snapshots AS (
+      SELECT DISTINCT ON (creative_id) *
+      FROM creative_snapshots
+      ORDER BY creative_id, snapshot_date DESC, id DESC
+    )
+    SELECT
+      s.creative_id,
+      s.status,
+      s.became_new_date,
+      s.changed_date,
+      s.became_removed_date,
+      c.advertiser_id,
+      c.advertiser_name,
+      c.first_seen,
+      c.last_seen_global,
+      ls.snapshot_date,
+      ls.media_format,
+      ls.regions,
+      ls.images,
+      ls.videos
+    FROM creative_status s
+    LEFT JOIN latest_snapshots ls ON ls.creative_id = s.creative_id
+    LEFT JOIN creatives c ON c.creative_id = s.creative_id
+    WHERE s.status = '${status}'
+    ORDER BY COALESCE(s.changed_date, s.became_new_date, s.became_removed_date, ls.snapshot_date) DESC NULLS LAST;
+  `;
 }
 
 Deno.serve(async (req) => {
@@ -109,26 +160,41 @@ Deno.serve(async (req) => {
       });
     }
 
-    const [newRows, removedRows, changedRows, activeRows] = await Promise.all([
-      runQuery(
-        "SELECT cs.*, s.status, s.became_new_date FROM creative_status s JOIN creative_snapshots cs ON cs.creative_id = s.creative_id WHERE s.status = 'new';"
-      ),
-      runQuery("SELECT * FROM creative_status WHERE status = 'removed';"),
-      runQuery(
-        "SELECT cs.*, s.status FROM creative_status s JOIN creative_snapshots cs ON cs.creative_id = s.creative_id WHERE s.status = 'changed';"
-      ),
-      runQuery(
-        "SELECT cs.*, s.status, s.became_new_date FROM creative_status s JOIN creative_snapshots cs ON cs.creative_id = s.creative_id WHERE s.status = 'active';"
-      ),
+    const [newRows, removedRows, changedRows, activeRows, previousRows] = await Promise.all([
+      runQuery(statusQuery("new")),
+      runQuery(statusQuery("removed")),
+      runQuery(statusQuery("changed")),
+      runQuery(statusQuery("active")),
+      runQuery(`
+        SELECT COUNT(DISTINCT creative_id)::int AS previous_total
+        FROM creative_snapshots
+        WHERE snapshot_date::date = (
+          SELECT MAX(snapshot_date::date)
+          FROM creative_snapshots
+          WHERE snapshot_date::date < CURRENT_DATE
+        );
+      `),
     ]);
 
     const newAds = newRows.map(mapRow);
     const removedAds = removedRows.map(mapRow);
     const changedAds = changedRows.map(mapRow);
     const activeAds = activeRows.map(mapRow);
+    const previousTotal =
+      typeof previousRows[0]?.previous_total === "number"
+        ? previousRows[0].previous_total
+        : 0;
 
     return new Response(
       JSON.stringify({
+        summary: {
+          total_ads: activeAds.length + newAds.length + changedAds.length,
+          last_week: previousTotal,
+          added_count: newAds.length,
+          removed_count: removedAds.length,
+          changed_count: changedAds.length,
+          active_count: activeAds.length,
+        },
         new: newAds,
         removed: removedAds,
         changed: changedAds,

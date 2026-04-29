@@ -136,8 +136,10 @@ export function Dashboard() {
         const nextAdded = (data.added ?? data.new ?? []).map(mapRaw);
         const nextRemoved = (data.removed ?? []).map(mapRaw);
         const nextChanged = (data.changed ?? []).map(mapRaw);
+        const currentAdsTotal =
+          nextActive.length + nextAdded.length + nextChanged.length;
         const fallbackSummary: AdSummary = {
-          total_ads: nextActive.length,
+          total_ads: currentAdsTotal,
           last_week: 0,
           added_count: nextAdded.length,
           removed_count: nextRemoved.length,
@@ -194,7 +196,7 @@ export function Dashboard() {
     new: {
       list: added,
       type: "added" as const,
-      emptyMessage: "No new ads detected today",
+      emptyMessage: "No new ads detected in the last 7 days",
     },
     active: {
       list: active,
@@ -204,12 +206,12 @@ export function Dashboard() {
     removed: {
       list: removed,
       type: "removed" as const,
-      emptyMessage: "No ads were removed today",
+      emptyMessage: "No removed ads available",
     },
     changed: {
       list: changed,
       type: "changed" as const,
-      emptyMessage: "No ads were modified today",
+      emptyMessage: "No ads changed since the last update",
     },
   };
 

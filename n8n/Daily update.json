@@ -1,0 +1,832 @@
+{
+  "name": "Daily update",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9c0cce67-9a4d-4fd2-8810-b51a346e021a",
+              "name": "domain",
+              "value": "redfunnel.co.uk",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -32,
+        224
+      ],
+      "id": "e10e6ea5-4ce7-4b0f-bf16-95d1876ac38b",
+      "name": "SearchAPI: domain"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "creative_snapshots",
+          "mode": "list",
+          "cachedResultName": "creative_snapshots"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "seen_today": "={{ $json.seen_today }}",
+            "creative_id": "={{ $json.creative_id }}",
+            "media_format": "={{ $json.format }}",
+            "regions": "={{ { \"region\": $json.region } }}",
+            "images": "={{ { \"image\": $json.image } }}",
+            "videos": "={{ $json.videos }}",
+            "metadata": "={{ $json.metadata }}",
+            "snapshot_date": "={{ $json.snapshot_date }}"
+          },
+          "matchingColumns": [
+            "creative_id",
+            "snapshot_date"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "creative_id",
+              "displayName": "creative_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "snapshot_date",
+              "displayName": "snapshot_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "seen_today",
+              "displayName": "seen_today",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "media_format",
+              "displayName": "media_format",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "regions",
+              "displayName": "regions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "images",
+              "displayName": "images",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "videos",
+              "displayName": "videos",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "metadata",
+              "displayName": "metadata",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        976,
+        128
+      ],
+      "id": "b036811d-1ea4-4b08-af71-e2558e8a2e59",
+      "name": "Insert or update rows in a table",
+      "credentials": {
+        "postgres": {
+          "id": "ObCPWIeUoYLAcV9e",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const out = [];\n\nfor (const item of $input.all()) {\n  const ad = item.json;\n\n  const creativeId = ad.creative_id || null;\n  if (!creativeId) continue;\n\n  const advertiserId = ad.advertiser_id || null;\n  const format = ad.format || null;\n\n  let region = null;\n  if (Array.isArray(ad.regions)) {\n    const gbRegion = ad.regions.find((r) => r?.code === 'GB' || r?.region_code === 'GB');\n    if (gbRegion) region = 'GB';\n  }\n  if (!region && ad.url && ad.url.includes('region=GB')) {\n    region = 'GB';\n  }\n  if (region !== 'GB') continue;\n\n  const image = ad.preview_image?.url || null;\n  const videos = Array.isArray(ad.videos)\n    ? ad.videos.map((video) => ({\n        url: video?.url || video?.src || null,\n        height: video?.height || null,\n        width: video?.width || null,\n      })).filter((video) => video.url)\n    : [];\n\n  out.push({\n    json: {\n      creative_id: creativeId,\n      snapshot_date: new Date().toISOString().slice(0, 10),\n      advertiser_id: advertiserId,\n      format,\n      region,\n      image,\n      videos,\n      metadata: {\n        type: ad.type || null,\n        preview_url: ad.preview_url || null,\n      },\n      first_seen: ad.first_shown || null,\n      last_seen_global: ad.last_shown || null,\n      seen_today: true,\n    },\n  });\n}\n\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        128
+      ],
+      "id": "b9d56dda-fccb-4afa-9ce3-60837112b10e",
+      "name": "prepareForCreative_snapshots"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "creatives",
+          "mode": "list",
+          "cachedResultName": "creatives"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "creative_id": "={{ $json.creative_id }}",
+            "advertiser_id": "={{ $json.advertiser_id }}",
+            "advertiser_name": "={{ $json.advertiser_name }}",
+            "first_seen": "={{ $json.first_seen }}",
+            "last_seen_global": "={{ $json.last_seen_global }}"
+          },
+          "matchingColumns": [
+            "creative_id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": true,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "removed": true
+            },
+            {
+              "id": "advertiser_id",
+              "displayName": "advertiser_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "advertiser_name",
+              "displayName": "advertiser_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "first_seen",
+              "displayName": "first_seen",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "last_seen_global",
+              "displayName": "last_seen_global",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "creative_id",
+              "displayName": "creative_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        976,
+        288
+      ],
+      "id": "02169397-1aaa-489d-92df-3644142c33a1",
+      "name": "Insert or update rows in a table1",
+      "credentials": {
+        "postgres": {
+          "id": "ObCPWIeUoYLAcV9e",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -304,
+        224
+      ],
+      "id": "2054795d-6747-4669-a1d7-12a53471fb17",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Input: an array of items from SearchAPI\n// Output: one transformed item per creative\n\nreturn items.map(item => {\n  const data = item.json;\n\n  return {\n    json: {\n      creative_id: data.creative_id || null,\n      advertiser_id: data.advertiser_id || null,\n      advertiser_name: data.title || null, // best available value from this structure\n\n      first_seen: data.first_shown || null,\n      last_seen_global: data.last_shown || null,\n      format: data.format || null,\n\n      verified: data.verified ?? null,\n      url: data.url || null,\n\n      regions: data.regions\n        ? data.regions.map(r => ({\n            region: r.code || null,\n            name: r.name || null,\n            region_code: r.region_code || null\n          }))\n        : [],\n\n      images: data.preview_image?.url\n        ? [\n            {\n              image: data.preview_image.url,\n              height: data.preview_image.height || null,\n              width: data.preview_image.width || null\n            }\n          ]\n        : [],\n\n      metadata: {\n        type: data.type || null,\n        rank_group: data.rank_group || null,\n        rank_absolute: data.rank_absolute || null,\n        preview_url: data.preview_url || null\n      }\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        288
+      ],
+      "id": "43ea07e2-da54-4817-bed2-a201809aa869",
+      "name": "prepForCreatives"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT DISTINCT snaps.creative_id,\n       CURRENT_DATE AS became_new_date\nFROM creative_snapshots snaps\nLEFT JOIN creative_status st ON st.creative_id = snaps.creative_id\nWHERE snaps.snapshot_date::date = CURRENT_DATE\n  AND st.creative_id IS NULL;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1536,
+        32
+      ],
+      "id": "073af456-269a-40f0-8227-30f065909b27",
+      "name": "new ads",
+      "credentials": {
+        "postgres": {
+          "id": "ObCPWIeUoYLAcV9e",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT st.creative_id,\n       CURRENT_DATE AS became_removed_date\nFROM creative_status st\nWHERE st.status <> 'removed'\n  AND NOT EXISTS (\n      SELECT 1\n      FROM creative_snapshots snaps\n      WHERE snaps.creative_id = st.creative_id\n        AND snaps.snapshot_date::date = CURRENT_DATE\n  );",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1536,
+        192
+      ],
+      "id": "0d692679-064d-4f2d-a6cf-079f74f0eb9d",
+      "name": "removed ads",
+      "credentials": {
+        "postgres": {
+          "id": "ObCPWIeUoYLAcV9e",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH today AS (\n  SELECT DISTINCT ON (creative_id) *\n  FROM creative_snapshots\n  WHERE snapshot_date::date = CURRENT_DATE\n  ORDER BY creative_id, snapshot_date DESC, id DESC\n),\nprevious AS (\n  SELECT DISTINCT ON (creative_id) *\n  FROM creative_snapshots\n  WHERE snapshot_date::date < CURRENT_DATE\n  ORDER BY creative_id, snapshot_date DESC, id DESC\n)\nSELECT t.creative_id,\n       CURRENT_DATE AS changed_date\nFROM today t\nJOIN previous y ON y.creative_id = t.creative_id\nJOIN creative_status s ON s.creative_id = t.creative_id\nWHERE s.status <> 'removed'\n  AND (\n       t.media_format IS DISTINCT FROM y.media_format\n    OR COALESCE(t.regions::jsonb, '{}'::jsonb) IS DISTINCT FROM COALESCE(y.regions::jsonb, '{}'::jsonb)\n    OR COALESCE(t.images::jsonb, '{}'::jsonb) IS DISTINCT FROM COALESCE(y.images::jsonb, '{}'::jsonb)\n    OR COALESCE(t.videos::jsonb, '[]'::jsonb) IS DISTINCT FROM COALESCE(y.videos::jsonb, '[]'::jsonb)\n  );",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1536,
+        352
+      ],
+      "id": "a6137ea7-4c23-44a0-b6ec-e9cc1827ccb0",
+      "name": "chnged ads",
+      "credentials": {
+        "postgres": {
+          "id": "ObCPWIeUoYLAcV9e",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE creative_status\nSET \n  status = 'removed',\n  became_removed_date = COALESCE(\n    became_removed_date,\n    CAST('{{ new Date($json.became_removed_date).toISOString().slice(0, 10) }}' AS date)\n  )\nWHERE creative_id = '{{$json.creative_id}}';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1712,
+        192
+      ],
+      "id": "211bb6ff-78a7-40fe-8dda-2f065235b288",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "ObCPWIeUoYLAcV9e",
+          "name": "Postgres account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE creative_status\nSET \n  status = 'changed',\n  changed_date = CAST(\n    '{{ new Date($json.changed_date).toISOString().slice(0, 10) }}' \n    AS date\n  )\nWHERE creative_id = '{{$json.creative_id}}'\n  AND status <> 'removed';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1712,
+        352
+      ],
+      "id": "1f6a8c36-778a-499f-80e3-0f1e7dcdea23",
+      "name": "Execute a SQL query1",
+      "credentials": {
+        "postgres": {
+          "id": "ObCPWIeUoYLAcV9e",
+          "name": "Postgres account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH restored_removed AS (\n  UPDATE creative_status s\n  SET status = 'active',\n      became_removed_date = NULL\n  WHERE status = 'removed'\n    AND EXISTS (\n        SELECT 1\n        FROM creative_snapshots t\n        WHERE t.creative_id = s.creative_id\n          AND t.snapshot_date::date = CURRENT_DATE\n    )\n  RETURNING 1\n),\nactivated_new AS (\n  UPDATE creative_status s\n  SET status = 'active'\n  WHERE status = 'new'\n    AND became_new_date <= CURRENT_DATE - INTERVAL '7 days'\n    AND EXISTS (\n        SELECT 1\n        FROM creative_snapshots t\n        WHERE t.creative_id = s.creative_id\n          AND t.snapshot_date::date = CURRENT_DATE\n    )\n  RETURNING 1\n)\nSELECT\n  (SELECT COUNT(*) FROM restored_removed) AS restored_removed_count,\n  (SELECT COUNT(*) FROM activated_new) AS activated_new_count;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1344,
+        64
+      ],
+      "id": "8f8860fe-cd00-469a-8252-3766a597fcec",
+      "name": "update status from yesterday",
+      "credentials": {
+        "postgres": {
+          "id": "ObCPWIeUoYLAcV9e",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH activated_changed AS (\n  UPDATE creative_status s\n  SET status = 'active'\n  WHERE status = 'changed'\n    AND changed_date < CURRENT_DATE\n    AND EXISTS (\n        SELECT 1\n        FROM creative_snapshots t\n        WHERE t.creative_id = s.creative_id\n          AND t.snapshot_date::date = CURRENT_DATE\n    )\n  RETURNING 1\n)\nSELECT COUNT(*) AS activated_changed_count\nFROM activated_changed;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1344,
+        336
+      ],
+      "id": "df33b055-d12c-4619-9fdd-1948695eda01",
+      "name": "update status from yesterday2",
+      "credentials": {
+        "postgres": {
+          "id": "ObCPWIeUoYLAcV9e",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1136,
+        192
+      ],
+      "id": "d75af326-6da8-495e-8e84-b255c2b8dbaa",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO creative_status (creative_id, status, became_new_date)\nVALUES (\n  '{{$json.creative_id}}',\n  'new',\n  CAST('{{ new Date($json.became_new_date).toISOString().slice(0, 10) }}' AS date)\n)\nON CONFLICT (creative_id) DO NOTHING;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1696,
+        32
+      ],
+      "id": "9776ea16-3742-4488-83ca-42e7a4067591",
+      "name": "Execute a SQL query2",
+      "credentials": {
+        "postgres": {
+          "id": "ObCPWIeUoYLAcV9e",
+          "name": "Postgres account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.dataforseo.com/v3/serp/google/ads_search/live/advanced",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=[\n  {\n    \"target\": \"{{ $json.domain }}\",\n    \"platform\": \"google_search\",\n    \"device\": \"desktop\",\n    \"os\": \"windows\",\n    \"depth\": 100,\n    \"location_code\": 2826\n  }\n]\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        208,
+        256
+      ],
+      "id": "b235dc59-c919-443b-a5d8-4548899fae48",
+      "name": "SearchAPI: list all creatives1",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "5HCzBu3T9WUPTNvy",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputItems = $input.all();\n\nconst rows = inputItems\n  .flatMap(i => i.json.tasks || [])\n  .flatMap(task => task.result || [])\n  .flatMap(result => result.items || [])\n  .filter(item => item.type === \"ads_search\");\n\nreturn rows.map(row => ({ json: row }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        256
+      ],
+      "id": "cb45d50c-4417-4046-a8f0-bfb9f85e0828",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM creative_snapshots a\nUSING creative_snapshots b\nWHERE a.creative_id = b.creative_id\n  AND a.snapshot_date = b.snapshot_date\n  AND a.id < b.id;\n\nCREATE UNIQUE INDEX IF NOT EXISTS creative_snapshots_creative_id_snapshot_date_idx\nON creative_snapshots (creative_id, snapshot_date);\n\nSELECT 1 AS ok;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -168,
+        224
+      ],
+      "id": "0d4f0c52-1f65-4d14-950d-746d8c3c6d61",
+      "name": "Ensure creative snapshot uniqueness",
+      "credentials": {
+        "postgres": {
+          "id": "ObCPWIeUoYLAcV9e",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { run_date: new Date().toISOString().slice(0, 10) } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1248,
+        192
+      ],
+      "id": "9f96a442-10dc-49b7-9fd1-38c8d280dd16",
+      "name": "Run status updates once"
+    }
+  ],
+  "pinData": {
+    "Schedule Trigger": [
+      {
+        "json": {
+          "timestamp": "2026-04-23T01:00:01.004+01:00",
+          "Readable date": "April 23rd 2026, 1:00:01 am",
+          "Readable time": "1:00:01 am",
+          "Day of week": "Thursday",
+          "Year": "2026",
+          "Month": "April",
+          "Day of month": "23",
+          "Hour": "01",
+          "Minute": "00",
+          "Second": "01",
+          "Timezone": "Europe/London (UTC+01:00)"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "SearchAPI: domain": {
+      "main": [
+        [
+          {
+            "node": "SearchAPI: list all creatives1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "prepareForCreative_snapshots": {
+      "main": [
+        [
+          {
+            "node": "Insert or update rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Ensure creative snapshot uniqueness",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "prepForCreatives": {
+      "main": [
+        [
+          {
+            "node": "Insert or update rows in a table1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "chnged ads": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "new ads": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "removed ads": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update status from yesterday": {
+      "main": [
+        [
+          {
+            "node": "new ads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update status from yesterday2": {
+      "main": [
+        [
+          {
+            "node": "chnged ads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert or update rows in a table": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert or update rows in a table1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Run status updates once",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SearchAPI: list all creatives1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "prepareForCreative_snapshots",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "prepForCreatives",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ensure creative snapshot uniqueness": {
+      "main": [
+        [
+          {
+            "node": "SearchAPI: domain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run status updates once": {
+      "main": [
+        [
+          {
+            "node": "update status from yesterday",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "removed ads",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "update status from yesterday2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "18202127-e9da-4f9e-9da8-5b22796f5532",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0c2ca1a9e137af334de7ca78f900f4ec18c71871682698c2de5d61b18d6c5506"
+  },
+  "id": "jzBTqTjNjMD5cOzK",
+  "tags": []
+}

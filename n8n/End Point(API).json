@@ -1,0 +1,324 @@
+{
+  "name": "End Point(API)",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "radar",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -384,
+        0
+      ],
+      "id": "083ee181-3d4d-46c5-9b91-5956e81a7b77",
+      "name": "Webhook",
+      "webhookId": "89215086-e561-40ee-84c2-ae23f8e45ebc"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT MAX(snapshot_date) AS latest_date FROM creative_snapshots;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -128,
+        32
+      ],
+      "id": "a240a3c2-6f04-445e-ae55-872bc0072955",
+      "name": "getLatestDate",
+      "credentials": {
+        "postgres": {
+          "id": "ObCPWIeUoYLAcV9e",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH latest_snapshots AS (\n  SELECT DISTINCT ON (creative_id) *\n  FROM creative_snapshots\n  ORDER BY creative_id, snapshot_date DESC, id DESC\n)\nSELECT\n  cs.creative_id,\n  c.advertiser_id,\n  c.advertiser_name,\n  cs.status,\n  c.first_seen,\n  c.last_seen_global,\n  cs.became_new_date,\n  cs.changed_date,\n  cs.became_removed_date,\n  snaps.snapshot_date,\n  snaps.media_format,\n  snaps.images,\n  snaps.videos,\n  snaps.regions\nFROM creative_status cs\nLEFT JOIN creatives c ON cs.creative_id = c.creative_id\nLEFT JOIN latest_snapshots snaps ON snaps.creative_id = cs.creative_id\nWHERE cs.status = 'active'\nORDER BY COALESCE(cs.changed_date, cs.became_new_date, cs.became_removed_date, snaps.snapshot_date) DESC NULLS LAST;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        384,
+        -256
+      ],
+      "id": "acc2b289-845e-44b9-8c6a-79b39eb7affb",
+      "name": "getActiveAds",
+      "credentials": {
+        "postgres": {
+          "id": "ObCPWIeUoYLAcV9e",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH latest_snapshots AS (\n  SELECT DISTINCT ON (creative_id) *\n  FROM creative_snapshots\n  ORDER BY creative_id, snapshot_date DESC, id DESC\n)\nSELECT\n  cs.creative_id,\n  c.advertiser_id,\n  c.advertiser_name,\n  cs.status,\n  c.first_seen,\n  c.last_seen_global,\n  cs.became_new_date,\n  cs.changed_date,\n  cs.became_removed_date,\n  snaps.snapshot_date,\n  snaps.media_format,\n  snaps.images,\n  snaps.videos,\n  snaps.regions\nFROM creative_status cs\nLEFT JOIN creatives c ON cs.creative_id = c.creative_id\nLEFT JOIN latest_snapshots snaps ON snaps.creative_id = cs.creative_id\nWHERE cs.status = 'new'\nORDER BY COALESCE(cs.changed_date, cs.became_new_date, cs.became_removed_date, snaps.snapshot_date) DESC NULLS LAST;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        384,
+        -96
+      ],
+      "id": "e14bd1bd-97ff-4455-81c6-f853ec5afbac",
+      "name": "getNewAds",
+      "credentials": {
+        "postgres": {
+          "id": "ObCPWIeUoYLAcV9e",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH latest_snapshots AS (\n  SELECT DISTINCT ON (creative_id) *\n  FROM creative_snapshots\n  ORDER BY creative_id, snapshot_date DESC, id DESC\n)\nSELECT\n  cs.creative_id,\n  c.advertiser_id,\n  c.advertiser_name,\n  cs.status,\n  c.first_seen,\n  c.last_seen_global,\n  cs.became_new_date,\n  cs.changed_date,\n  cs.became_removed_date,\n  snaps.snapshot_date,\n  snaps.media_format,\n  snaps.images,\n  snaps.videos,\n  snaps.regions\nFROM creative_status cs\nLEFT JOIN creatives c ON cs.creative_id = c.creative_id\nLEFT JOIN latest_snapshots snaps ON snaps.creative_id = cs.creative_id\nWHERE cs.status = 'removed'\nORDER BY COALESCE(cs.changed_date, cs.became_new_date, cs.became_removed_date, snaps.snapshot_date) DESC NULLS LAST;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        384,
+        64
+      ],
+      "id": "80489002-3457-4509-b2bb-185f1eb46a6a",
+      "name": "getRemovedAds",
+      "credentials": {
+        "postgres": {
+          "id": "ObCPWIeUoYLAcV9e",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH latest_snapshots AS (\n  SELECT DISTINCT ON (creative_id) *\n  FROM creative_snapshots\n  ORDER BY creative_id, snapshot_date DESC, id DESC\n)\nSELECT\n  cs.creative_id,\n  c.advertiser_id,\n  c.advertiser_name,\n  cs.status,\n  c.first_seen,\n  c.last_seen_global,\n  cs.became_new_date,\n  cs.changed_date,\n  cs.became_removed_date,\n  snaps.snapshot_date,\n  snaps.media_format,\n  snaps.images,\n  snaps.videos,\n  snaps.regions\nFROM creative_status cs\nLEFT JOIN creatives c ON cs.creative_id = c.creative_id\nLEFT JOIN latest_snapshots snaps ON snaps.creative_id = cs.creative_id\nWHERE cs.status = 'changed'\nORDER BY COALESCE(cs.changed_date, cs.became_new_date, cs.became_removed_date, snaps.snapshot_date) DESC NULLS LAST;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        400,
+        240
+      ],
+      "id": "f17e18f9-e1fe-46a6-baf3-42e815240432",
+      "name": "getChangedAds",
+      "credentials": {
+        "postgres": {
+          "id": "ObCPWIeUoYLAcV9e",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst categories = {\n  active: [],\n  new: [],\n  removed: [],\n  changed: [],\n};\n\nconst seen = new Set();\nlet previousTotal = 0;\n\nitems.forEach((item) => {\n  const row = item?.json || {};\n\n  if (row.previous_total !== undefined && row.previous_total !== null) {\n    const parsed = Number(row.previous_total);\n    if (Number.isFinite(parsed)) previousTotal = parsed;\n    return;\n  }\n\n  const status = row.status;\n  const creativeId = row.creative_id;\n  if (status in categories && creativeId) {\n    const key = status + ':' + creativeId;\n    if (!seen.has(key)) {\n      seen.add(key);\n      categories[status].push(row);\n    }\n  }\n});\n\nconst currentAdsTotal =\n  categories.active.length + categories.new.length + categories.changed.length;\n\nreturn [\n  {\n    json: {\n      summary: {\n        total_ads: currentAdsTotal,\n        last_week: previousTotal,\n        added_count: categories.new.length,\n        removed_count: categories.removed.length,\n        changed_count: categories.changed.length,\n        active_count: categories.active.length,\n      },\n      ...categories,\n    },\n  },\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        32
+      ],
+      "id": "f3ad7a49-caac-4826-97a4-1ce42fe29381",
+      "name": "formatResponse"
+    },
+    {
+      "parameters": {
+        "jsCode": "// incoming: [{ latest_date: something }]\nconst raw = new Date($json.latest_date);\n\n// Convert to YYYY-MM-DD\nconst isoDate = raw.toISOString().split(\"T\")[0];\n\nreturn [\n  {\n    normalized_date: isoDate\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        112,
+        32
+      ],
+      "id": "4fc23ca2-012d-4bde-a43e-3d28ce33c465",
+      "name": "normalizeDate"
+    },
+    {
+      "parameters": {
+        "numberInputs": 5
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        592,
+        0
+      ],
+      "id": "545c2014-7c5a-4699-8013-1d67344c75f6",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH latest AS (\n  SELECT MAX(snapshot_date::date) AS latest_date\n  FROM creative_snapshots\n),\nprevious AS (\n  SELECT MAX(snapshot_date::date) AS previous_date\n  FROM creative_snapshots, latest\n  WHERE snapshot_date::date < latest.latest_date\n)\nSELECT COUNT(DISTINCT creative_id)::int AS previous_total\nFROM creative_snapshots, previous\nWHERE snapshot_date::date = previous.previous_date;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        400,
+        400
+      ],
+      "id": "e829b22d-42ec-4fc8-b3ec-03f73e91c6fb",
+      "name": "getPreviousTotal",
+      "credentials": {
+        "postgres": {
+          "id": "ObCPWIeUoYLAcV9e",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "getLatestDate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "getLatestDate": {
+      "main": [
+        [
+          {
+            "node": "normalizeDate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "getChangedAds": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "getRemovedAds": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "getNewAds": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "getActiveAds": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "normalizeDate": {
+      "main": [
+        [
+          {
+            "node": "getActiveAds",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "getNewAds",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "getRemovedAds",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "getChangedAds",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "getPreviousTotal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "formatResponse": {
+      "main": [
+        []
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "formatResponse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "getPreviousTotal": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d101a0f0-2a8c-46e7-8b8c-1f1c3950e3b7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0c2ca1a9e137af334de7ca78f900f4ec18c71871682698c2de5d61b18d6c5506"
+  },
+  "id": "sdoLgHD5fvEbOhLU",
+  "tags": []
+}
